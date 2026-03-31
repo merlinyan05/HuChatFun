@@ -10,7 +10,7 @@ HuChatFun：基于户晨风（B站直播博主）语料微调的 AI 对话模型
 
 ## 技术路线
 
-- 基座：Qwen3.5-9B-Instruct（Qwen3.5 出了再换）
+- 基座：Qwen/Qwen3.5-9B（HF 上 post-trained 版即 instruct 版，base 版叫 Qwen3.5-9B-Base）
 - 微调：QLoRA（4-bit NF4 + LoRA r=64）
 - 训练机：RTX 5080 16GB
 - 推理：Mac Mini M4 16GB → Ollama → OpenClaw
@@ -106,7 +106,7 @@ docs/            项目文档
 
 产出文件：`pipeline/step0_explore.py`、`.gitignore`
 
-下一步：首次训练。写 `training/train.py`（QLoRA 脚本），用 `data/final/train.json` 在 RTX 5080 上微调 Qwen3.5-9B-Instruct。
+下一步：首次训练。写 `training/train.py`（QLoRA 脚本），用 `data/final/train.json` 在 RTX 5080 上微调 Qwen/Qwen3.5-9B。
 
 ### 阶段6 结果备忘
 - 随机打乱后 9:1 切分，seed=42
