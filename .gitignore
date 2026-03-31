@@ -1,0 +1,49 @@
+# ===== 模型文件（体积大，不入库）=====
+models/
+*.gguf
+*.bin
+*.safetensors
+*.pt
+*.pth
+
+# ===== 数据产物（中间文件可重新生成）=====
+data/step1_cleaned/
+data/step2_segmented/
+data/step3_scored/
+data/step4_pairs/
+data/step5_enhanced/
+data/final/
+# 保留 data/ 目录本身（通过 .gitkeep）
+
+# ===== 训练产物 =====
+training/output/
+training/checkpoints/
+training/runs/
+logs/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
+*.ipynb
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
