@@ -42,9 +42,9 @@ docs/            项目文档
 - [X] 阶段2：结构化切分（完成于 2026-03-31）
 - [X] 阶段3：质量评分过滤（完成于 2026-03-31）
 - [X] 阶段4：构造训练对（完成于 2026-03-31）
-- [ ] 阶段5：风格增强（可选，暂跳过）
-- [ ] 阶段6：输出 train.json / eval.json
-- [ ] 首次训练
+- [ ] 阶段5：风格增强（可选，暂跳过，等第一版效果再定）
+- [X] 阶段6：输出 train.json / eval.json（完成于 2026-03-31）
+- [ ] 首次训练 ← **当前在这里**
 - [ ] 评估 & 迭代
 - [ ] 部署到 Ollama
 
@@ -106,7 +106,13 @@ docs/            项目文档
 
 产出文件：`pipeline/step0_explore.py`、`.gitignore`
 
-下一步：执行阶段6（输出 train/eval），写 `pipeline/step6_export.py`，把训练对按 9:1 切分成 train.json / eval.json，输出到 `data/final/`。
+下一步：首次训练。写 `training/train.py`（QLoRA 脚本），用 `data/final/train.json` 在 RTX 5080 上微调 Qwen3.5-9B-Instruct。
+
+### 阶段6 结果备忘
+- 随机打乱后 9:1 切分，seed=42
+- train.json：1,581 条（41,370 轮）
+- eval.json：176 条（4,922 轮）
+- 输出位置：`data/final/`
 
 ### 阶段4 结果备忘
 - 格式：Qwen ChatML 多轮（system + user/assistant 交替）

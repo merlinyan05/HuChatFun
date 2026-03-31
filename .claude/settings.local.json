@@ -7,7 +7,8 @@
       "Bash(PYTHONIOENCODING=utf-8 python pipeline/step2_segment.py)",
       "Bash(PYTHONIOENCODING=utf-8 python pipeline/step3_score.py)",
       "Bash(PYTHONIOENCODING=utf-8 python -c \"\nimport json\nfrom pathlib import Path\nrecs = [json.loads\\(l\\) for l in Path\\('D:/Workspace/Projects/HuChatFun/data/step3_scored/passed.jsonl'\\).read_text\\(encoding='utf-8'\\).splitlines\\(\\)]\nr = recs[5]\nprint\\('keys:', list\\(r.keys\\(\\)\\)\\)\nprint\\('lines:'\\)\nfor l in r['lines']:\n    print\\(' ', l[:90]\\)\n\")",
-      "Bash(PYTHONIOENCODING=utf-8 python pipeline/step4_pairs.py)"
+      "Bash(PYTHONIOENCODING=utf-8 python pipeline/step4_pairs.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python pipeline/step6_export.py)"
     ]
   }
 }
