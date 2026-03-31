@@ -4,7 +4,10 @@
       "Bash(PYTHONIOENCODING=utf-8 python pipeline/step0_explore.py)",
       "Bash(PYTHONIOENCODING=utf-8 python -c \"\nimport re\nfrom pathlib import Path\n\ncorpus = Path\\('D:/Workspace/Projects/HuChatFun/corpus/HuChenFeng-1.1'\\)\nfiles_2025 = [f for f in corpus.rglob\\('*.md'\\) \n              if '2025' in str\\(f.parent\\) and 'INC' not in f.name and f.name != 'README.md']\nfiles_2024 = [f for f in corpus.rglob\\('*.md'\\) \n              if '2024' in str\\(f.parent\\) and 'INC' not in f.name and f.name != 'README.md']\n\ndef count\\(files\\):\n    chars, turns = 0, 0\n    for f in files:\n        t = f.read_text\\(encoding='utf-8', errors='replace'\\)\n        chars += len\\(t\\)\n        turns += len\\([l for l in t.splitlines\\(\\) if l.startswith\\('户晨风：'\\)]\\)\n    return chars, turns\n\nc25, t25 = count\\(files_2025\\)\nc24, t24 = count\\(files_2024\\)\nprint\\(f'2025: {len\\(files_2025\\)} 个文件, {c25:,} 字符, {t25:,} 轮'\\)\nprint\\(f'2024: {len\\(files_2024\\)} 个文件, {c24:,} 字符, {t24:,} 轮'\\)\nprint\\(f'合计: {len\\(files_2025\\)+len\\(files_2024\\)} 个文件, {c25+c24:,} 字符, {t25+t24:,} 轮'\\)\n\")",
       "Bash(PYTHONIOENCODING=utf-8 python pipeline/step1_clean.py)",
-      "Bash(PYTHONIOENCODING=utf-8 python pipeline/step2_segment.py)"
+      "Bash(PYTHONIOENCODING=utf-8 python pipeline/step2_segment.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python pipeline/step3_score.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c \"\nimport json\nfrom pathlib import Path\nrecs = [json.loads\\(l\\) for l in Path\\('D:/Workspace/Projects/HuChatFun/data/step3_scored/passed.jsonl'\\).read_text\\(encoding='utf-8'\\).splitlines\\(\\)]\nr = recs[5]\nprint\\('keys:', list\\(r.keys\\(\\)\\)\\)\nprint\\('lines:'\\)\nfor l in r['lines']:\n    print\\(' ', l[:90]\\)\n\")",
+      "Bash(PYTHONIOENCODING=utf-8 python pipeline/step4_pairs.py)"
     ]
   }
 }
