@@ -8,7 +8,17 @@
       "Bash(PYTHONIOENCODING=utf-8 python pipeline/step3_score.py)",
       "Bash(PYTHONIOENCODING=utf-8 python -c \"\nimport json\nfrom pathlib import Path\nrecs = [json.loads\\(l\\) for l in Path\\('D:/Workspace/Projects/HuChatFun/data/step3_scored/passed.jsonl'\\).read_text\\(encoding='utf-8'\\).splitlines\\(\\)]\nr = recs[5]\nprint\\('keys:', list\\(r.keys\\(\\)\\)\\)\nprint\\('lines:'\\)\nfor l in r['lines']:\n    print\\(' ', l[:90]\\)\n\")",
       "Bash(PYTHONIOENCODING=utf-8 python pipeline/step4_pairs.py)",
-      "Bash(PYTHONIOENCODING=utf-8 python pipeline/step6_export.py)"
+      "Bash(PYTHONIOENCODING=utf-8 python pipeline/step6_export.py)",
+      "Bash(python -c \":*)",
+      "Bash(python -c \"import trl; print\\(trl.__version__\\)\")",
+      "Bash(python -c \"from trl import SFTConfig; import inspect; sig = inspect.signature\\(SFTConfig.__init__\\); print\\([p for p in sig.parameters if ''seq'' in p or ''max'' in p or ''length'' in p or ''truncat'' in p]\\)\")",
+      "Bash(python training/train.py)",
+      "Bash(python -c \"import torch; print\\(''PyTorch:'', torch.__version__\\); print\\(''CUDA:'', torch.version.cuda\\); print\\(''cuDNN:'', torch.backends.cudnn.version\\(\\)\\); print\\(''GPU:'', torch.cuda.get_device_name\\(0\\)\\); print\\(''Capability:'', torch.cuda.get_device_capability\\(0\\)\\)\")",
+      "Bash(nvidia-smi)",
+      "Bash(CUDA_LAUNCH_BLOCKING=1 python training/train.py)",
+      "Bash(pip install:*)",
+      "Bash(pip uninstall:*)",
+      "Bash(python -c \"from huggingface_hub import snapshot_download; snapshot_download\\(''Qwen/Qwen3-8B'', local_dir=''models/Qwen3-8B''\\)\")"
     ]
   }
 }

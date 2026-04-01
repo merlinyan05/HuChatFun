@@ -2,6 +2,7 @@
 
 > Claude Code 每次启动自动读取此文件。保持更新。
 > **规则：每完成一个阶段，立即更新"当前进度"和"上次会话摘要"，不等用户提醒。**
+> **规则：遇到报错、踩坑、兼容性问题时，必须将问题现象、排查过程和解决方案记录到 `docs/troubleshooting.md`。**
 
 ## 项目是什么
 
@@ -10,8 +11,8 @@ HuChatFun：基于户晨风（B站直播博主）语料微调的 AI 对话模型
 
 ## 技术路线
 
-- 基座：Qwen/Qwen3.5-9B（HF 上 post-trained 版即 instruct 版，base 版叫 Qwen3.5-9B-Base）
-- 微调：QLoRA（4-bit NF4 + LoRA r=64）
+- 基座：Qwen/Qwen3-8B（原计划 Qwen3.5-9B，因混合注意力架构在 Windows 上不兼容已弃用，详见 `docs/troubleshooting.md`）
+- 微调：QLoRA（4-bit NF4 + LoRA r=32）
 - 训练机：RTX 5080 16GB
 - 推理：Mac Mini M4 16GB → Ollama → OpenClaw
 - 语料：`corpus/HuChenFeng-1.1/` 下约 400+ 场直播文字稿（.md 格式）（但是可能只挑近几年的）
@@ -44,7 +45,7 @@ docs/            项目文档
 - [X] 阶段4：构造训练对（完成于 2026-03-31）
 - [ ] 阶段5：风格增强（可选，暂跳过，等第一版效果再定）
 - [X] 阶段6：输出 train.json / eval.json（完成于 2026-03-31）
-- [ ] 首次训练 ← **当前在这里**
+- [ ] 首次训练 ← **当前在这里**（train.py 已写好，待运行）
 - [ ] 评估 & 迭代
 - [ ] 部署到 Ollama
 
@@ -99,14 +100,20 @@ docs/            项目文档
 
 <!-- 每次结束时让 Claude Code 更新，不等用户提醒 -->
 
-最近一次会话（2026-03-31）：
+最近一次会话（2026-04-01）：
+- 写了 `training/train.py`（QLoRA 微调脚本）
+- 超参：LoRA r=64 / α=128 / 4-bit NF4 / batch=1×16累积 / lr=2e-4 / epoch=3 / seq=2048
+- 模型 Qwen3.5-9B 已下载到 `models/Qwen3.5-9B`（~18GB，4 分片 safetensors）
+- 注意：Qwen3.5-9B 是多模态架构（Qwen3_5ForConditionalGeneration），文本微调可正常用
+
+产出文件：`training/train.py`
+
+下一步：在 RTX 5080 上运行训练，观察 loss 收敛情况。训练完后写 merge_lora.py 合并权重。
+
+上上次会话（2026-03-31）：
 - 构建了完整目录结构（training/ eval/ deploy/ models/ logs/ docs/ data/step*/final/）
 - 添加了 .gitignore（排除 models/、data/各阶段产物、训练产物）
-- 完成阶段0：写并执行了 `pipeline/step0_explore.py`，探查了全部 494 个语料文件
-
-产出文件：`pipeline/step0_explore.py`、`.gitignore`
-
-下一步：首次训练。写 `training/train.py`（QLoRA 脚本），用 `data/final/train.json` 在 RTX 5080 上微调 Qwen/Qwen3.5-9B。
+- 完成阶段0-6 数据管线全部完成
 
 ### 阶段6 结果备忘
 - 随机打乱后 9:1 切分，seed=42

@@ -8,8 +8,8 @@
 
 | 项       | 选型                                                          |
 | -------- | ------------------------------------------------------------- |
-| 基座模型 | Qwen3.5-9B                                                    |
-| 微调方法 | QLoRA（4-bit NF4, LoRA r=64）                                 |
+| 基座模型 | Qwen3-8B（原 Qwen3.5-9B，因 Windows 兼容性问题已更换）       |
+| 微调方法 | QLoRA（4-bit NF4, LoRA r=32）                                 |
 | 训练硬件 | RTX 5080 16GB                                                 |
 | 推理部署 | Mac Mini M4 16GB → Ollama                                    |
 | 最终接入 | OpenClaw                                                      |
@@ -59,6 +59,7 @@ docs/        项目文档
 - [数据清洗工作流](docs/cleaning_workflow.md)
 - [项目目录结构](docs/project_structure.md)
 - [语料格式探查记录](docs/format_notes.md)
+- [踩坑记录](docs/troubleshooting.md)
 - [实验日志](logs/experiments.md)
 
 ## 免责声明
