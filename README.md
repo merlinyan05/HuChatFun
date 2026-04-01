@@ -13,7 +13,7 @@
 | 训练硬件 | RTX 5080 16GB                                                 |
 | 推理部署 | Mac Mini M4 16GB → Ollama                                    |
 | 最终接入 | OpenClaw                                                      |
-| 语料     | 户晨风直播文字稿 2023-2025（400+ 场）（有可能只选取近几年的） |
+| 语料     | 户晨风直播文字稿 2024-2025（V2 当前使用范围）                 |
 
 ## 快速开始
 
@@ -40,14 +40,18 @@ ollama run huchatfun
 ## 目录说明
 
 ```
-corpus/      原始语料（只读）
-pipeline/    数据处理脚本（step0-6）
-data/        各阶段产物 → data/final/ 为最终训练集
-training/    训练、合并、量化脚本
-eval/        评估脚本
-deploy/      Ollama + OpenClaw 配置
-models/      模型文件（不入库）
-docs/        项目文档
+corpus/          原始语料（只读）
+pipeline/        数据处理脚本（step0-6）
+data/
+  v1/            第一版数据产物（已归档）
+  v2/            第二版数据产物（当前）
+training/        训练、合并脚本
+eval/            评估脚本
+deploy/          Ollama Modelfile
+models/          模型文件（不入库，含 v1/v2 LoRA）
+logs/            训练日志（run1, run2, ...）
+docs/            项目文档
+tools/           第三方工具（不入库）
 ```
 
 详细目录结构见 `docs/project_structure.md`。

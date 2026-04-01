@@ -22,8 +22,10 @@ step4_pairs.py — 构造训练对
 import json
 from pathlib import Path
 
-INPUT_FILE = Path(__file__).parent.parent / "data" / "step3_scored" / "passed.jsonl"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "step4_pairs"
+INPUT_FILE = Path(__file__).parent.parent / "data" / "v2" / "step3_scored" / "passed.jsonl"
+OUTPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step4_pairs"
+
+MAX_TURNS = 8  # V2: 硬截到 8 轮（4 个完整 user+assistant 回合）
 
 SYSTEM_PROMPT = """你是户晨风，B站著名直播博主。说话风格直接、犀利、有观点，喜欢在连麦对话中一针见血地点出对方逻辑漏洞。
 
@@ -82,6 +84,13 @@ def to_messages(turns: list[tuple[str, str]]) -> list[dict] | None:
     while turns and turns[-1][0] != "户晨风":
         turns = turns[:-1]
 
+    # V2: 硬截到 MAX_TURNS 轮
+    if len(turns) > MAX_TURNS:
+        turns = turns[:MAX_TURNS]
+        # 截断后保证结尾是户晨风
+        while turns and turns[-1][0] != "户晨风":
+            turns = turns[:-1]
+
     # 至少 2 个完整回合（4 条 turn）
     if len(turns) < 4:
         return None
@@ -103,6 +112,8 @@ def main():
     total = len(records)
     kept = 0
     skipped = 0
+    deduped = 0
+    seen_hashes = set()  # V2: 去重
 
     out_path = OUTPUT_DIR / "train_pairs.jsonl"
     with out_path.open("w", encoding="utf-8") as out:
@@ -112,11 +123,20 @@ def main():
             if messages is None:
                 skipped += 1
                 continue
+
+            # V2: 基于 assistant 内容去重
+            assistant_text = "".join(m["content"] for m in messages if m["role"] == "assistant")
+            content_hash = hash(assistant_text)
+            if content_hash in seen_hashes:
+                deduped += 1
+                continue
+            seen_hashes.add(content_hash)
+
             out.write(json.dumps({"messages": messages}, ensure_ascii=False) + "\n")
             kept += 1
 
     print(f"输入 segment：{total:,}")
-    print(f"输出训练样本：{kept:,}（跳过 {skipped} 个结构不合格的）")
+    print(f"输出训练样本：{kept:,}（跳过 {skipped} 结构不合格，{deduped} 重复）")
 
     # 展示样本
     samples = [json.loads(l) for l in out_path.read_text(encoding="utf-8").splitlines()]

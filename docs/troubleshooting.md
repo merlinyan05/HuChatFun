@@ -222,3 +222,37 @@ sft_config = SFTConfig(
 - 大词表模型（>100K）在消费级 GPU 上训练时，eval 容易 OOM
 - `save_steps` 和 `eval_steps` 不要设成同一个值，否则 eval 崩了 checkpoint 也丢
 - 如果一定要训练中 eval，可以设 `eval_accumulation_steps=1` 分批计算
+
+---
+
+## 2026-04-01: V1 模型部署后严重重复循环
+
+### 现象
+
+V1 模型（Qwen3-8B QLoRA, 3 epoch）部署到 Ollama 后：
+- Q4_K_M 量化版：直接输出乱码（"嗯嗯嗯嗯"、"说说说说"、重复输入问题）
+- f16 版：开头 1-2 句正常且有户晨风风格，但之后进入重复循环（"苹果是好，苹果是好，苹果是好"）
+
+### 根因（多重）
+
+1. **训练数据过长被截断**：平均 26.3 轮/条，seq_len=1024 截断后模型没见过对话结尾，不知道何时停止
+2. **3 epoch 过拟合**：1581 条数据跑 3 遍，过拟合了直播语料中的重复口头禅模式
+3. **Qwen3 对 Q4_K_M 量化敏感**：LoRA 微调后的权重分布不适合激进量化，f16 明显好于 Q4
+4. **Ollama 缺少 chat template**：合并模型时 tokenizer_config.json 丢失了 chat_template，需在 Modelfile 中手动指定 TEMPLATE
+5. **Qwen3 thinking 模式干扰**：在模板中加 `<think>\n\n</think>` 反而更差（训练数据没有 think tokens）
+
+### 解决方案
+
+V2 数据重构 + 重新训练：
+- 加入 2024 年数据，增加多样性
+- 每条对话限制 ≤8 轮，确保完整结尾在 token 范围内
+- 训练改为 1 epoch，seq_len=2048
+- 部署使用 f16 或 Q6_K 量化
+- Modelfile 中手动指定 ChatML TEMPLATE + stop tokens
+
+### 教训
+
+- 微调后的模型对量化更敏感，先用 f16 验证效果再量化
+- chat template 必须在 Modelfile 中明确指定，不能依赖 GGUF 内嵌
+- 训练数据的长度分布必须和推理时的使用场景匹配（短对话场景就训短对话）
+- Qwen3 的 thinking 模式需要特殊处理，如果训练数据没用 think tokens 就不要在推理时加

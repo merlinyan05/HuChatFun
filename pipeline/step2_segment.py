@@ -19,8 +19,8 @@ import json
 import re
 from pathlib import Path
 
-INPUT_DIR = Path(__file__).parent.parent / "data" / "step1_cleaned"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "step2_segmented"
+INPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step1_cleaned"
+OUTPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step2_segmented"
 
 # 送客信号：户晨风说这些词代表一段连麦结束
 FAREWELL_PATTERN = re.compile(
@@ -28,7 +28,7 @@ FAREWELL_PATTERN = re.compile(
 )
 
 MIN_HU_TURNS = 3   # segment 内户晨风最少发言轮数
-MAX_LINES = 60     # segment 最大行数
+MAX_LINES = 24     # V2: 降到 24 行（约 12 轮），step4 再硬截到 8 轮
 
 
 def is_farewell(line: str) -> bool:

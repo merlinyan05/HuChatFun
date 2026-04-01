@@ -18,7 +18,7 @@ import re
 from pathlib import Path
 
 CORPUS_DIR = Path(__file__).parent.parent / "corpus" / "HuChenFeng-1.1"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "step1_cleaned"
+OUTPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step1_cleaned"
 
 # 非对话文件，直接跳过
 SKIP_FILES = {"Preface.md", "Acknowledgements.md", "SUMMARY.md", "videos.md", "README.md"}
@@ -111,10 +111,10 @@ def process_file(filepath: Path) -> list[str]:
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 只取 2025年* 目录
-    target_dirs = sorted(CORPUS_DIR.glob("2025年*"))
+    # V2: 取 2024+2025 年数据
+    target_dirs = sorted(CORPUS_DIR.glob("2024年*")) + sorted(CORPUS_DIR.glob("2025年*"))
     if not target_dirs:
-        print("未找到 2025年* 目录，请检查路径")
+        print("未找到 2024年*/2025年* 目录，请检查路径")
         return
 
     all_files = []
