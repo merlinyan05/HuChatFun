@@ -187,3 +187,38 @@ Windows PowerShell 5.x 不支持 `&&`（PowerShell 7+ 才支持）。
 
 - 用 `;` 代替：`cd D:\Workspace\Projects\HuChatFun; python training/train.py`
 - 或者先 `cd`，再单独运行命令
+
+---
+
+## 2026-04-01: 训练中 eval 步骤 OOM
+
+### 现象
+
+Qwen3-8B QLoRA 训练 100 步正常（loss 3.8→2.47），但第 100 步触发 eval 时 OOM：
+```
+File "transformers/loss/loss_utils.py", line 55, in ForCausalLMLoss
+    logits = logits.float()
+torch.AcceleratorError: CUDA error: out of memory
+```
+
+Checkpoint 也没保存上（save 和 eval 在同一步触发，eval 先执行就崩了）。
+
+### 根因
+
+训练时 gradient checkpointing 节省显存，但 eval 不用 gradient checkpointing，需要把完整 logits 张量转 float32。Qwen3 词表 ~152K tokens，logits 大小 = 152K × 1024(seq_len) × 4 bytes ≈ **600MB**，加上模型本身占用，16GB 不够。
+
+### 解决方案
+
+关掉训练中的 eval，训练完单独评估：
+```python
+sft_config = SFTConfig(
+    eval_strategy="no",  # 不在训练中 eval
+    ...
+)
+```
+
+### 教训
+
+- 大词表模型（>100K）在消费级 GPU 上训练时，eval 容易 OOM
+- `save_steps` 和 `eval_steps` 不要设成同一个值，否则 eval 崩了 checkpoint 也丢
+- 如果一定要训练中 eval，可以设 `eval_accumulation_steps=1` 分批计算

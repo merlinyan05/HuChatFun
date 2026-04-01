@@ -107,8 +107,7 @@ def main():
         logging_dir=LOG_DIR,
         logging_steps=LOG_STEPS,
         save_steps=SAVE_STEPS,
-        eval_strategy="steps",
-        eval_steps=EVAL_STEPS,
+        eval_strategy="no",  # eval 在训练中 OOM（logits.float() 爆显存），训练完单独评估
         bf16=True,
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
