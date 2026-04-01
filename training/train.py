@@ -17,12 +17,12 @@ from datasets import Dataset
 MODEL_PATH = str(Path(__file__).resolve().parent.parent / "models" / "Qwen3-8B")
 TRAIN_DATA = str(Path(__file__).resolve().parent.parent / "data" / "v2" / "final" / "train.json")
 EVAL_DATA = str(Path(__file__).resolve().parent.parent / "data" / "v2" / "final" / "eval.json")
-OUTPUT_DIR = str(Path(__file__).resolve().parent.parent / "models" / "huchat-lora-v2")
-LOG_DIR = str(Path(__file__).resolve().parent.parent / "logs" / "run2")
+OUTPUT_DIR = str(Path(__file__).resolve().parent.parent / "models" / "huchat-lora-v3")
+LOG_DIR = str(Path(__file__).resolve().parent.parent / "logs" / "run3")
 
 # LoRA 参数
-LORA_R = 32               # LoRA 秩，32 对 9B 模型够用，显存友好
-LORA_ALPHA = 64            # 通常设为 2×r，控制 LoRA 缩放
+LORA_R = 64               # V3: 32→64，增加微调容量，学习停止模式
+LORA_ALPHA = 128           # 保持 2×r
 LORA_DROPOUT = 0.05
 TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj"]  # 注意力层
 
@@ -31,7 +31,7 @@ MAX_SEQ_LEN = 2048         # V2: Qwen3-8B 标准架构，2048 覆盖完整 8 轮
 BATCH_SIZE = 1             # 单卡 batch，5080 16GB 只能放 1
 GRAD_ACCUM = 16            # 梯度累积 → 有效 batch = 16
 LR = 2e-4                  # QLoRA 标准学习率
-EPOCHS = 1                 # V2: 1 epoch 防止过拟合（V1 跑 3 epoch 导致重复循环）
+EPOCHS = 2                 # V3: 2 epoch，配合 r=64 加深风格内化
 WARMUP_RATIO = 0.03
 SAVE_STEPS = 100
 EVAL_STEPS = 100
