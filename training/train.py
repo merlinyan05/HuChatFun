@@ -27,7 +27,7 @@ LORA_DROPOUT = 0.05
 TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj"]  # 注意力层
 
 # 训练超参
-MAX_SEQ_LEN = 2048         # V2: Qwen3-8B 标准架构，2048 覆盖完整 8 轮对话
+MAX_SEQ_LEN = 1024         # V3: 91% 数据在 1024 内，省时间换 r=64+2epoch
 BATCH_SIZE = 1             # 单卡 batch，5080 16GB 只能放 1
 GRAD_ACCUM = 16            # 梯度累积 → 有效 batch = 16
 LR = 2e-4                  # QLoRA 标准学习率

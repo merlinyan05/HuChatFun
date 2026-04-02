@@ -27,7 +27,15 @@
       "Bash(python pipeline/step3_score.py)",
       "Bash(python pipeline/step4_pairs.py)",
       "Bash(python pipeline/step6_export.py)",
-      "Bash(python tools/llama.cpp/convert_hf_to_gguf.py models/huchat-merged-v2 --outfile models/huchat-merged-v2/huchatfun-v2-f16.gguf --outtype f16)"
+      "Bash(python tools/llama.cpp/convert_hf_to_gguf.py models/huchat-merged-v2 --outfile models/huchat-merged-v2/huchatfun-v2-f16.gguf --outtype f16)",
+      "Bash(pkill -f \"python training/train.py\")",
+      "Bash(taskkill //F //IM python.exe)",
+      "Bash(python training/merge_lora.py)",
+      "Bash(python tools/llama.cpp/convert_hf_to_gguf.py models/huchat-merged-v3 --outfile models/huchat-merged-v3/huchatfun-v3-f16.gguf --outtype f16)",
+      "Bash(ls:*)",
+      "Bash(python -m json.tool)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(python -c ':*)"
     ]
   }
 }

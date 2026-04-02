@@ -12,7 +12,7 @@ HuChatFun：基于户晨风（B站直播博主）语料微调的 AI 对话模型
 ## 技术路线
 
 - 基座：Qwen/Qwen3-8B（原计划 Qwen3.5-9B，因混合注意力架构在 Windows 上不兼容已弃用，详见 `docs/troubleshooting.md`）
-- 微调：QLoRA（4-bit NF4 + LoRA r=32）
+- 微调：QLoRA（4-bit NF4 + LoRA，当前最佳 r=64）
 - 训练机：RTX 5080 16GB
 - 推理：Mac Mini M4 16GB → Ollama → OpenClaw
 - 语料：`corpus/HuChenFeng-1.1/` 下约 400+ 场直播文字稿（.md 格式）（但是可能只挑近几年的）
@@ -29,11 +29,13 @@ training/        训练脚本（train.py, merge_lora.py）
 eval/            评估脚本和测试数据
 deploy/          Ollama Modelfile + OpenClaw 配置
 models/          模型文件（gitignore，不入库）
-  huchat-lora-v1/    第一版 LoRA（loss 3.80→2.33，有重复问题）
-  huchat-lora-v2/    第二版 LoRA
+  huchat-lora-v1/    V1 LoRA（r=32, 3ep, loss 3.80→2.33，严重重复）
+  huchat-lora-v2/    V2 LoRA（r=32, 1ep, loss 2.24，重复~70%）
+  huchat-lora-v3/    V3 LoRA（r=64, 2ep，当前最佳）
+  huchat-merged-v{1,2,3}/  各版本合并后的完整权重
 logs/
-  run1/          第一版训练日志
-  run2/          第二版训练日志
+  train_v1.md    V1 训练日志（含环境搭建记录）
+  run2/          V2 训练日志
 docs/            项目文档（含 troubleshooting.md 踩坑记录）
 tools/           第三方工具（llama.cpp 等，不入库）
 ```
@@ -57,7 +59,10 @@ tools/           第三方工具（llama.cpp 等，不入库）
 - [X] V2 数据重处理（完成于 2026-04-01，2024+2025 / 2667 条 / ≤8 轮 / 70+口头禅词表）
 - [X] V2 训练（完成于 2026-04-01，1 epoch / seq=2048，loss 2.24 / acc 60%）
 - [X] V2 部署测试（完成于 2026-04-01，有改善但仍 ~70% 重复循环）
-- [ ] V3 改进 ← **当前在这里**（提高 LoRA rank / 调 epoch / 或换基座模型）
+- [X] V3 训练（完成于 2026-04-01，r=64 / 2 epoch / seq=1024，当前最佳效果）
+- [X] V3 部署测试（完成于 2026-04-01，Ollama f16 部署）
+- [X] V4/V5 推理参数调优（完成于 2026-04-01，同 V3 权重，调 Modelfile 参数）
+- [ ] 继续改进 ← **当前在这里**
 - [ ] 最终部署到 Ollama
 
 ## 关键设计决策（已确定）
@@ -107,62 +112,53 @@ tools/           第三方工具（llama.cpp 等，不入库）
 - "咱有什么说什么" = 表示实话实说
 - "你废了" = 判定对方没救
 
+## 训练版本全记录
+
+### 各版本对照
+
+| 版本 | 数据 | LoRA | Epoch | Seq | 结果 | Ollama 名称 |
+|------|------|------|-------|-----|------|------------|
+| V1 | v1: 1581条, 仅2025, 26轮/条 | r=32 α=64 | 3 | 1024 | loss 3.80→2.33, 严重重复 | `huchatfun` (Q4, 5GB) |
+| V2 | v2: 2667条, 2024+2025, ≤8轮/条 | r=32 α=64 | 1 | 2048 | loss 2.24, 重复~70% | `huchatfunV2` (Q4, 5GB) |
+| V3 | v2（同上） | r=64 α=128 | 2 | 1024 | **当前最佳** | `huchatfunV3` (f16, 16GB) |
+| V4 | — | — | — | — | V3 权重 + 调 Modelfile 参数 | `huchatfunV4` (f16, 16GB) |
+| V5 | — | — | — | — | V3 权重 + 调 Modelfile 参数 | `huchatfunV5` (f16, 16GB) |
+
+所有版本基座均为 Qwen3-8B，QLoRA 4-bit NF4，target_modules=q/k/v/o_proj。
+
+### 关键教训
+- V1：数据太长（26轮/条）被 seq=1024 截断 + 3 epoch 过拟合 → 严重重复
+- V2：1 epoch 可能欠拟合，但 seq=2048 确保数据完整
+- V3：r=64 翻倍容量 + 2 epoch 平衡，seq=1024 够用（91% 数据在 1024 内）
+- Q4_K_M 量化严重降质（Qwen3 对量化敏感），f16 效果远好于 Q4
+- V4/V5 是同一个 V3 权重，只调了 Ollama 推理参数（temperature/repeat_penalty/num_predict 等）
+
+### 当前 Modelfile 参数（deploy/Modelfile）
+```
+temperature 0.7 | top_p 0.9 | repeat_penalty 1.3 | num_predict 150
+```
+
 ## 上次会话摘要
 
 <!-- 每次结束时让 Claude Code 更新，不等用户提醒 -->
 
-最近一次会话（2026-04-01）：
-- Qwen3.5-9B 因混合注意力架构在 Windows 上 OOM，改用 Qwen3-8B
-- V1 训练完成：loss 3.80→2.33，token accuracy 37%→56%
-- V1 部署测试：风格学到了（"安卓"、"购买力"、"我告诉你"），但严重重复循环
-- 重复原因分析：训练数据平均 26.3 轮/条被 seq_len=1024 截断，模型没见过完整结尾；3 epoch 过拟合
-- Q4_K_M 量化严重降质（f16 开头正常但循环，Q4 直接乱码），Qwen3 对量化敏感
-- 决定做 V2：加 2024 数据、限 ≤8 轮/条、1 epoch、seq_len=2048
-- 目录重组为 v1/v2 版本化结构
-- 创建了 `docs/troubleshooting.md`、`training/merge_lora.py`、`deploy/Modelfile`
+最近一次会话（2026-04-02）：
+- 梳理了项目完整版本历史，确认磁盘上 3 轮训练（V1/V2/V3）+ Ollama 5 个部署（V4/V5 是 V3 调参）
+- 同步更新 CLAUDE.md，补齐 V3/V4/V5 信息
 
-### V1 训练备忘
-- 基座：Qwen3-8B | 超参：LoRA r=32 / α=64 / 4-bit NF4 / batch=1×16 / lr=2e-4 / epoch=3 / seq=1024
-- 数据：1,581 条训练 / 176 条验证（仅 2025 年，平均 26.3 轮/条）
-- 结果：loss 3.80→2.33，297 步（~75 分钟）
-- 产物：`models/huchat-lora-v1/`、`models/huchat-merged-v1/`
-- 问题：生成时严重重复循环，Q4_K_M 量化后更差
+上一次会话（2026-04-01）：
+- V1/V2/V3 三轮训练全部完成
+- V3（r=64, 2ep, seq=1024）为当前最佳效果
+- V4/V5 在 Ollama 中调推理参数测试
+- 使用 llama.cpp 转换 GGUF（f16），Q4 量化效果差已放弃
 
-下一步：V2 数据管线（2024+2025，≤8 轮/条，去重）→ V2 训练（1 epoch，seq=2048）
+更早会话（2026-03-31）：
+- 完成阶段 0-6 数据管线、目录结构、.gitignore
+- Qwen3.5-9B 因混合注意力在 Windows OOM，改用 Qwen3-8B
 
-上上次会话（2026-03-31）：
-- 构建了完整目录结构（training/ eval/ deploy/ models/ logs/ docs/ data/step*/final/）
-- 添加了 .gitignore（排除 models/、data/各阶段产物、训练产物）
-- 完成阶段0-6 数据管线全部完成
+### 数据管线备忘（V1/V2 共用管线，参数不同）
 
-### V1 阶段6 结果备忘
-- 随机打乱后 9:1 切分，seed=42
-- train.json：1,581 条（41,370 轮）
-- eval.json：176 条（4,922 轮）
-- 输出位置：`data/final/`
+**V1 数据**：仅 2025 年 → 1581 条训练 / 176 条验证，平均 26.3 轮/条
+**V2 数据**：2024+2025 年 → 2667 条训练 / 297 条验证，≤8 轮/条（平均 7.8）
 
-### V1 阶段4 结果备忘
-- 格式：Qwen ChatML 多轮（system + user/assistant 交替）
-- 输入 1,757 segment → 全部转换成功（0 跳过）
-- 输出：`data/step4_pairs/train_pairs.jsonl`（1,757 条）
-- 总对话轮次：46,292，平均每条 26.3 轮
-- system prompt 已写入，含核心口头禅和风格描述
-
-### V1 阶段3 结果备忘
-- 评分维度：口头禅密度（40）+ 平均发言长度（30）+ 互动质量（20）- 噪声惩罚（10）
-- 阈值定为 40（原 50 太严，只过 8.3%；40 过 60.3% = 1,757 个 segment）
-- 输出：`data/step3_scored/scored.jsonl`（全量）+ `passed.jsonl`（1,757 个过线）
-- 最高分 62.7，平均分 41.0
-
-### V1 阶段2 结果备忘
-- 切分依据：连麦边界（户晨风说"下一个"/"再见"/"生活愉快"/"前程似锦"等送客信号）
-- 总 segment：4,228 → 保留 2,916（69.0%），过滤条件：户晨风 < 3 轮 或 无某网友发言
-- 超长段截断：> 60 行截断（避免多话题混入）
-- 输出：`data/step2_segmented/`（174 个 .jsonl 文件）
-- 格式：每行 `{"source": "2025-xx-xx", "seg_id": N, "lines": [...]}`
-
-### V1 阶段1 结果备忘
-- 只用 2025 年数据，排除 INC，激进去噪（户晨风 < 15 字删除 + 礼物感谢行删除）
-- 输入 164,338 行 → 输出 134,964 行（保留 82.1%）
-- 2025-03-04.md 清洗后为空（全是 API 转录错误），已跳过
-- 输出位置：`data/step1_cleaned/`（174 个 .txt 文件）
+管线步骤：step1 粗切去噪 → step2 连麦边界切分 → step3 质量评分 → step4 ChatML 训练对 → step6 train/eval 切分

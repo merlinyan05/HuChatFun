@@ -1,4 +1,4 @@
-FROM ../models/huchat-merged-v2/huchatfun-v2-f16.gguf
+FROM ../models/huchat-merged-v3/huchatfun-v3-f16.gguf
 
 TEMPLATE """{{- if .System }}<|im_start|>system
 {{ .System }}<|im_end|>

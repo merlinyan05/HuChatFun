@@ -11,8 +11,8 @@ from peft import PeftModel
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE_MODEL = str(ROOT / "models" / "Qwen3-8B")
-LORA_ADAPTER = str(ROOT / "models" / "huchat-lora-v2")
-OUTPUT_DIR = str(ROOT / "models" / "huchat-merged-v2")
+LORA_ADAPTER = str(ROOT / "models" / "huchat-lora-v3")
+OUTPUT_DIR = str(ROOT / "models" / "huchat-merged-v3")
 
 
 def main():
