@@ -40,7 +40,16 @@
       "Bash(echo \"v2.x train: $?\")",
       "Bash(echo \"v2.2 train: $?\")",
       "Bash(echo \"merge: $?\")",
-      "Bash(echo $?)"
+      "Bash(echo $?)",
+      "Bash(find . -name .env* -o -name *credentials* -o -name *secret* -o -name *config*.json)",
+      "Bash(git log:*)",
+      "Bash(grep -r sk_ . --include=*.py --include=*.json --include=*.md)",
+      "Bash(grep -rE \"[0-9]{11}|[0-9]{18}\" corpus/ --include=*.md)",
+      "Bash(git config:*)",
+      "Bash(grep -r \"户晨风\\\\|户子\\\\|Hu Chen\" . --include=*.md --include=*.py --include=*.json)",
+      "Bash(grep -r \"http\\\\|github\\\\|bilibili\\\\|twitter\\\\|qq\\\\|wechat\" . --include=*.md --include=*.py)",
+      "Bash(find . -type f -name .env* -o -name *secret* -o -name *cred*)",
+      "Bash(grep -r \"os\\\\.environ\\\\|getenv\\\\|API\\\\|KEY\\\\|TOKEN\\\\|SECRET\" . --include=*.py)"
     ]
   }
 }
