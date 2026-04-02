@@ -35,7 +35,12 @@
       "Bash(ls:*)",
       "Bash(python -m json.tool)",
       "Bash(echo \"exit: $?\")",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(echo \"v1.1 train: $?\")",
+      "Bash(echo \"v2.x train: $?\")",
+      "Bash(echo \"v2.2 train: $?\")",
+      "Bash(echo \"merge: $?\")",
+      "Bash(echo $?)"
     ]
   }
 }
