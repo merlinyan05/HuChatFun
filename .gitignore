@@ -7,13 +7,11 @@ models/
 *.pth
 
 # ===== 数据产物（中间文件可重新生成）=====
-data/step1_cleaned/
-data/step2_segmented/
-data/step3_scored/
-data/step4_pairs/
-data/step5_enhanced/
-data/final/
-# 保留 data/ 目录本身（通过 .gitkeep）
+data/*/step*/
+data/*/final/
+
+# ===== Claude Code 本地配置 =====
+.claude/
 
 # ===== 训练产物 =====
 training/output/
