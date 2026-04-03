@@ -40,6 +40,9 @@ build/
 Thumbs.db
 desktop.ini
 
+# ===== 第三方工具 =====
+tools/
+
 # ===== IDE =====
 .vscode/
 .idea/
