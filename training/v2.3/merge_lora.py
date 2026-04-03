@@ -1,7 +1,7 @@
 """
 合并 LoRA adapter 到基座模型，输出完整 fp16 权重
-用法: python merge_lora.py
-输出: models/huchat-merged/ (约 16GB safetensors)
+用法: python training/v2.3/merge_lora.py
+输出: models/huchat-merged-v4/ (约 16GB safetensors)
 """
 
 import torch
@@ -11,8 +11,8 @@ from peft import PeftModel
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 BASE_MODEL = str(ROOT / "models" / "Qwen3-8B")
-LORA_ADAPTER = str(ROOT / "models" / "huchat-lora")
-OUTPUT_DIR = str(ROOT / "models" / "huchat-merged")
+LORA_ADAPTER = str(ROOT / "models" / "huchat-lora-v4")
+OUTPUT_DIR = str(ROOT / "models" / "huchat-merged-v4")
 
 
 def main():
@@ -25,7 +25,6 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(LORA_ADAPTER, trust_remote_code=True)
 
     # ── 加载基座模型（fp16，CPU）──
-    # 合并需要完整精度，不能用 4-bit
     print("加载基座模型（fp16，CPU）... 需要约 16GB 内存")
     model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,

@@ -12,8 +12,8 @@ import json
 import random
 from pathlib import Path
 
-INPUT_FILE = Path(__file__).parent.parent / "data" / "v2" / "step4_pairs" / "train_pairs.jsonl"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "final"
+INPUT_FILE = Path(__file__).parent.parent.parent / "data" / "v2" / "step4_pairs" / "train_pairs.jsonl"
+OUTPUT_DIR = Path(__file__).parent.parent.parent / "data" / "v2" / "final"
 
 SEED = 42
 EVAL_RATIO = 0.1

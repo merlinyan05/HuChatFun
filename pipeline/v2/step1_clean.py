@@ -17,8 +17,8 @@ step1_clean.py — 粗切去噪
 import re
 from pathlib import Path
 
-CORPUS_DIR = Path(__file__).parent.parent / "corpus" / "HuChenFeng-1.1"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step1_cleaned"
+CORPUS_DIR = Path(__file__).parent.parent.parent / "corpus" / "HuChenFeng-1.1"
+OUTPUT_DIR = Path(__file__).parent.parent.parent / "data" / "v2" / "step1_cleaned"
 
 # 非对话文件，直接跳过
 SKIP_FILES = {"Preface.md", "Acknowledgements.md", "SUMMARY.md", "videos.md", "README.md"}

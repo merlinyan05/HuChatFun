@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 from collections import defaultdict
 
-CORPUS_DIR = Path(__file__).parent.parent / "corpus" / "HuChenFeng-1.1"
+CORPUS_DIR = Path(__file__).parent.parent.parent / "corpus" / "HuChenFeng-1.1"
 
 
 def scan_file(filepath: Path) -> dict:

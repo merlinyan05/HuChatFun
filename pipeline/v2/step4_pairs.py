@@ -22,8 +22,8 @@ step4_pairs.py — 构造训练对
 import json
 from pathlib import Path
 
-INPUT_FILE = Path(__file__).parent.parent / "data" / "v2" / "step3_scored" / "passed.jsonl"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step4_pairs"
+INPUT_FILE = Path(__file__).parent.parent.parent / "data" / "v2" / "step3_scored" / "passed.jsonl"
+OUTPUT_DIR = Path(__file__).parent.parent.parent / "data" / "v2" / "step4_pairs"
 
 MAX_TURNS = 8  # V2: 硬截到 8 轮（4 个完整 user+assistant 回合）
 

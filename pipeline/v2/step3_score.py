@@ -18,8 +18,8 @@ import json
 import re
 from pathlib import Path
 
-INPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step2_segmented"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step3_scored"
+INPUT_DIR = Path(__file__).parent.parent.parent / "data" / "v2" / "step2_segmented"
+OUTPUT_DIR = Path(__file__).parent.parent.parent / "data" / "v2" / "step3_scored"
 
 # 口头禅词表（权重：核心梗 2 分，高频毒舌 1 分）
 # V2: 从语料频率统计中大幅扩充，偏重攻击性/有乐子的表达

@@ -19,8 +19,8 @@ import json
 import re
 from pathlib import Path
 
-INPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step1_cleaned"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "v2" / "step2_segmented"
+INPUT_DIR = Path(__file__).parent.parent.parent / "data" / "v2" / "step1_cleaned"
+OUTPUT_DIR = Path(__file__).parent.parent.parent / "data" / "v2" / "step2_segmented"
 
 # 送客信号：户晨风说这些词代表一段连麦结束
 FAREWELL_PATTERN = re.compile(

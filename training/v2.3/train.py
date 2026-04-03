@@ -1,7 +1,8 @@
 """
-HuChatFun QLoRA 训练脚本
+HuChatFun V2.3 QLoRA 训练脚本
 在 RTX 5080 16GB 上微调 Qwen3-8B
-用法: python train.py
+变更：NEFTune 抗重复 + 3 epoch + lr 降至 1.5e-4
+用法: python training/v2.3/train.py
 """
 
 import json
@@ -13,28 +14,29 @@ from trl import SFTTrainer, SFTConfig
 from datasets import Dataset
 
 # ==================== 可调参数 ====================
-# 路径（相对于 training/ 目录运行）
-MODEL_PATH = str(Path(__file__).resolve().parent.parent.parent / "models" / "Qwen3-8B")
-TRAIN_DATA = str(Path(__file__).resolve().parent.parent.parent / "data" / "v2" / "final" / "train.json")
-EVAL_DATA = str(Path(__file__).resolve().parent.parent.parent / "data" / "v2" / "final" / "eval.json")
-OUTPUT_DIR = str(Path(__file__).resolve().parent.parent.parent / "models" / "huchat-lora-v3")
-LOG_DIR = str(Path(__file__).resolve().parent.parent.parent / "logs" / "run3")
+ROOT = Path(__file__).resolve().parent.parent.parent
+
+MODEL_PATH = str(ROOT / "models" / "Qwen3-8B")
+TRAIN_DATA = str(ROOT / "data" / "v2" / "final" / "train.json")
+EVAL_DATA = str(ROOT / "data" / "v2" / "final" / "eval.json")
+OUTPUT_DIR = str(ROOT / "models" / "huchat-lora-v4")
+LOG_DIR = str(ROOT / "logs" / "run4")
 
 # LoRA 参数
-LORA_R = 64               # V3: 32→64，增加微调容量，学习停止模式
-LORA_ALPHA = 128           # 保持 2×r
+LORA_R = 64
+LORA_ALPHA = 128
 LORA_DROPOUT = 0.05
-TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj"]  # 注意力层
+TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj"]
 
 # 训练超参
-MAX_SEQ_LEN = 2048         # V2: Qwen3-8B 标准架构，2048 覆盖完整 8 轮对话
-BATCH_SIZE = 1             # 单卡 batch，5080 16GB 只能放 1
-GRAD_ACCUM = 16            # 梯度累积 → 有效 batch = 16
-LR = 2e-4                  # QLoRA 标准学习率
-EPOCHS = 2                 # V3: 2 epoch，配合 r=64 加深风格内化
+MAX_SEQ_LEN = 1024         # 91% 数据在 1024 内，够用
+BATCH_SIZE = 1
+GRAD_ACCUM = 16            # 有效 batch = 16
+LR = 1.5e-4                # V2.3: 降低学习率，减少过拟合
+EPOCHS = 3                 # V2.3: 3 epoch，配合低 lr 和 NEFTune
 WARMUP_RATIO = 0.03
+NEFTUNE_ALPHA = 5           # V2.3: NEFTune 噪声，抗重复
 SAVE_STEPS = 100
-EVAL_STEPS = 100
 LOG_STEPS = 10
 # ==================================================
 
@@ -54,7 +56,7 @@ def main():
         load_in_4bit=True,
         bnb_4bit_quant_type="nf4",
         bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,  # 二次量化，再省一点显存
+        bnb_4bit_use_double_quant=True,
     )
 
     # ── 加载 Tokenizer ──
@@ -89,8 +91,6 @@ def main():
     model.print_trainable_parameters()
 
     # ── 加载数据集 ──
-    # 数据格式: [{"messages": [{"role": "system", ...}, {"role": "user", ...}, ...]}]
-    # SFTTrainer 会自动检测 messages 列并应用 chat template
     train_ds = Dataset.from_list(load_json(TRAIN_DATA))
     eval_ds = Dataset.from_list(load_json(EVAL_DATA))
     print(f"训练集: {len(train_ds)} 条 | 验证集: {len(eval_ds)} 条")
@@ -107,7 +107,7 @@ def main():
         logging_dir=LOG_DIR,
         logging_steps=LOG_STEPS,
         save_steps=SAVE_STEPS,
-        eval_strategy="no",  # eval 在训练中 OOM（logits.float() 爆显存），训练完单独评估
+        eval_strategy="no",
         bf16=True,
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False},
@@ -117,6 +117,7 @@ def main():
         optim="paged_adamw_8bit",
         max_length=MAX_SEQ_LEN,
         seed=42,
+        neftune_noise_alpha=NEFTUNE_ALPHA,  # V2.3: NEFTune 抗重复
     )
 
     # ── 开始训练 ──
@@ -129,11 +130,13 @@ def main():
     )
 
     print("=" * 50)
-    print("开始训练！")
+    print("开始训练！V2.3")
     print(f"  有效 batch size: {BATCH_SIZE * GRAD_ACCUM}")
     print(f"  总 epoch: {EPOCHS}")
     print(f"  最大序列长度: {MAX_SEQ_LEN}")
     print(f"  LoRA rank: {LORA_R}")
+    print(f"  学习率: {LR}")
+    print(f"  NEFTune alpha: {NEFTUNE_ALPHA}")
     print("=" * 50)
 
     trainer.train()
