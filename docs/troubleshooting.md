@@ -391,3 +391,40 @@ train_ds = Dataset.from_list(data).map(messages_to_text)
 
 - Unsloth 的 SFTTrainer 和原生 trl 的 API 不完全兼容
 - 最稳妥的方式是直接给 dataset 加 `text` 字段，避免依赖 formatting_func
+
+---
+
+## 2026-04-07: Unsloth 内置 GGUF 导出在 Windows 上失败
+
+### 现象
+
+`model.save_pretrained_gguf()` 合并权重成功，但转 GGUF 阶段报错：
+
+```
+RuntimeError: llama.cpp folder 'C:\Users\Merlin\.unsloth\llama.cpp' does not exist
+RuntimeError: [FAIL] Command `pip install gguf protobuf sentencepiece mistral_common` failed with error
+  `WARNING: Failed to remove contents in a temporary directory '...\~umpy.libs'`
+```
+
+### 根因
+
+Unsloth 的 GGUF 导出会尝试：
+1. 用 winget 安装 cmake、VS Build Tools、OpenSSL
+2. 克隆并编译 llama.cpp 到 `~/.unsloth/llama.cpp`
+3. 安装 gguf 等 Python 包
+
+在 Windows 上第 2 步 git clone 失败（目录不存在），第 3 步 pip install 因为临时目录锁定也失败。即使依赖都装上了，Windows 编译 llama.cpp 也经常出问题。
+
+### 解决方案
+
+**不用 Unsloth 的 GGUF 导出**。`save_pretrained_gguf` 在合并权重阶段已经成功，safetensors 文件已保存。用项目里现有的 llama.cpp 手动转：
+
+```powershell
+python tools/llama.cpp/convert_hf_to_gguf.py models/huchat-merged-v5 --outtype f16 --outfile models/huchat-merged-v5/huchatfun-v3.1-f16.gguf
+```
+
+### 教训
+
+- Unsloth 的 `save_pretrained_gguf` 在 Linux 上很方便，但 **Windows 上不可靠**，不要依赖
+- 好在合并权重（`save_pretrained_merged` 的逻辑）在 GGUF 转换之前执行，即使后面失败了权重也不会丢
+- Windows 项目统一用 `tools/llama.cpp` 转 GGUF，不要每次都尝试编译新的
