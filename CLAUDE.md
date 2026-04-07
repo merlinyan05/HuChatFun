@@ -12,7 +12,7 @@ HuChatFun：基于户晨风（B站直播博主）语料微调的 AI 对话模型
 ## 技术路线
 
 - 基座：Qwen/Qwen3-8B（原计划 Qwen3.5-9B，因混合注意力架构在 Windows 上不兼容已弃用，详见 `docs/troubleshooting.md`）
-- 微调：QLoRA（4-bit NF4 + LoRA，当前最佳 r=64）
+- 微调：QLoRA（4-bit NF4 + LoRA，当前 r=64，V2.4 将试 r=128）
 - 训练机：RTX 5080 16GB
 - 推理：Mac Mini M4 16GB → Ollama → OpenClaw
 - 语料：`corpus/HuChenFeng-1.1/` 下约 400+ 场直播文字稿（.md 格式）（但是可能只挑近几年的）
@@ -31,18 +31,22 @@ training/          训练脚本，按模型子版本归档
   v1.1/            V1.1 训练（V1 数据，r=32, 3ep）
   v2.1/            V2.1 训练（V2 数据，r=32, 1ep）
   v2.2/            V2.2 训练（V2 数据，r=64, 2ep）
-  v2.3/            V2.3 训练（V2 数据，r=64, 3ep, NEFTune）← V2 封版
-  v3.1/            V3.1 训练（待启动）
+  v2.3/            V2.3 训练（V2 数据，r=64, 3ep, NEFTune）
+  v2.4/            V2.4 训练（V2 数据，r=128, 3ep）← 待跑
+  v3.1/            V3.1 Unsloth 实验（失败，已废弃）
 deploy/            Ollama Modelfile，按模型版本归档
   v2.2/            V2.2 部署配置（含多个 Modelfile 变体）
   v2.3/            V2.3 部署配置（当前最佳 V6）
-  v3.1/            V3.1 部署配置（待启动）
+  v2.4/            V2.4 部署配置（待训练）
+  v3.1/            V3.1 部署配置（失败，已废弃）
 eval/              评估脚本和测试数据
 models/            模型文件（gitignore，不入库）
   huchat-lora-v1/      V1.1 LoRA
   huchat-lora-v2/      V2.1 LoRA
   huchat-lora-v3/      V2.2 LoRA
   huchat-lora-v4/      V2.3 LoRA
+  huchat-lora-v5/      V3.1 LoRA（Unsloth，废弃）
+  huchat-lora-v6/      V2.4 LoRA（待训练）
   huchat-merged-v{1,2,3,4}/  各版本合并后的完整权重
 logs/
   train_v1.md      V1.1 训练日志（含环境搭建记录）
@@ -76,7 +80,9 @@ tools/             第三方工具（llama.cpp 等，不入库）
 - [X] V2.3 部署测试（完成于 2026-04-03，**V2.3 (V6) 为 V2 系列最佳效果**）
 - [X] V2 系列封版（2026-04-07，git tag `v2.3-final`）
 - [X] 瓶颈分析：V2.2→V2.3 指标持平，SFT+LoRA+V2 数据已到天花板
-- [ ] **V3 启动：换基座 / 换框架 / 新数据 / DPO** ← **当前在这里**
+- [X] V3.1 Unsloth 实验（2026-04-07，**失败**：trl 降级导致 loss masking 丢失 + tokenizer 被改 → 推理严重退化）
+- [ ] **V2.4 训练：r=128**（脚本就绪，待跑）← **当前在这里**
+- [ ] V2.4 部署测试 → Ollama `huchatfunV8`
 - [ ] 最终部署到 Ollama
 
 ## 关键设计决策（已确定）
@@ -139,11 +145,12 @@ tools/             第三方工具（llama.cpp 等，不入库）
 | V2.2 | V3 | V2（同上） | r=64 α=128 | 2 | 1024 | 训练最佳权重 | `huchatfunV3` (f16) |
 | V2.2-deploy-a | V4 | — | — | — | — | V2.2 权重 + 调参 | `huchatfunV4` (f16) |
 | V2.2-deploy-b | V5 | — | — | — | — | V2.2 权重 + 最佳调参 | `huchatfunV5` (f16) |
-| V2.3 | V6 | V2（同上） | r=64 α=128 | 3 | 1024 | **V2 系列最佳**，NEFTune α=5, lr=1.5e-4, loss 2.10 | `huchatfunV6` (f16) |
+| V2.3 | V6 | V2（同上） | r=64 α=128 | 3 | 1024 | **当前最佳**，NEFTune α=5, lr=1.5e-4, loss 2.10 | `huchatfunV6` (f16) |
+| V3.1 | V7 | V2（同上） | r=64 α=128 | 3 | 1024 | **失败**，Unsloth 框架，推理严重退化 | `huchatfunV7` (废弃) |
+| V2.4 | V8 | V2（同上） | **r=128 α=256** | 3 | 1024 | 待训练 | `huchatfunV8` (待部署) |
 
-所有 V1-V2 版本基座均为 Qwen3-8B，QLoRA 4-bit NF4，target_modules=q/k/v/o_proj。
+所有版本基座均为 Qwen3-8B，QLoRA 4-bit NF4，target_modules=q/k/v/o_proj。
 各版本详细参数见 `training/v*.*/README.md` 和 `deploy/v*.*/README.md`。
-V2 系列已封版（git tag `v2.3-final`），后续改进进入 V3。
 
 ### 关键教训
 - V1.1：数据太长（26轮/条）被 seq=1024 截断 + 3 epoch 过拟合 → 严重重复
@@ -152,23 +159,30 @@ V2 系列已封版（git tag `v2.3-final`），后续改进进入 V3。
 - V2.3：NEFTune+3ep+低lr 没有突破 V2.2 的指标（loss 2.10 vs 2.09, acc 0.61 vs 0.62），**确认 V2 数据+Qwen3-8B+SFT 组合已到天花板**
 - Q4_K_M 量化严重降质（Qwen3 对量化敏感），f16 效果远好于 Q4
 - **V2 瓶颈三层**：① 数据量/质量 ② LoRA r=64 在 16GB 卡上的容量上限 ③ SFT 无法教模型"别重复"
+- V3.1 Unsloth 实验失败：trl 0.24 不支持 messages 格式的 loss masking（只对 assistant token 计算 loss），手动转文本后模型角色边界模糊；tokenizer 被 Unsloth 修改（extra_special_tokens 清空），GGUF 推理退化
+- **Windows 上不要用 Unsloth**，兼容性问题太多（详见 troubleshooting.md）
+- 合并 LoRA 时 tokenizer 必须从基座模型加载，不能从 LoRA adapter 加载（Unsloth/trl 可能修改 tokenizer 配置）
 
-### V3 突破方向（见 `docs/upgrade_plan.md`）
-1. Unsloth 框架替换（省时间省显存，为更大实验留空间）
-2. 换基座模型（Qwen4/DeepSeek 等，可能从根本上改善生成质量）
-3. DPO 二阶段（专门惩罚重复，教模型"哪种说法更好"）
-4. 数据扩充或重做（可选，视新基座效果决定）
+### 下一步方向
+1. ~~Unsloth 框架替换~~（已试，Windows 上失败，放弃）
+2. **V2.4: r=128**（脚本就绪，用原框架 transformers+peft+trl 1.0.0）
+3. 换基座模型（Qwen4/DeepSeek 等，等 V2.4 结果再决定）
+4. DPO 二阶段（专门惩罚重复，等 SFT 基础够好再做）
 
 ## 上次会话摘要
 
 <!-- 每次结束时让 Claude Code 更新，不等用户提醒 -->
 
 最近一次会话（2026-04-07）：
-- 分析 V2 系列四轮训练指标，确认 V2.3 (V6) 为最佳但已触及天花板
-- V2.2→V2.3 loss/accuracy 持平（2.09→2.10 / 0.62→0.61），NEFTune 未见效
-- 打 git tag `v2.3-final` 封版 V2 系列
-- 建立 V3 目录骨架（pipeline/v3, training/v3.1, deploy/v3.1）
-- 规划 V3 突破方向：Unsloth + 换基座 + DPO
+- 瓶颈分析：V2 系列 loss/accuracy 已到天花板
+- 打 git tag `v2.3-final` 封版
+- **Unsloth 实验（V3.1/V7）完整流程：安装→训练→导出→部署→全部失败**
+  - 训练 loss 正常（2.04）但推理严重退化（无限重复）
+  - 根因：trl 0.24 丢失 loss masking + tokenizer extra_special_tokens 被清空
+  - 详见 troubleshooting.md 共 4 条新记录
+- 放弃 Unsloth，回到原框架（transformers+peft+trl 1.0.0）
+- 准备 V2.4（r=128）训练脚本，待明天跑
+- 环境已恢复（trl 1.0.0）
 
 上一次会话（2026-04-03）：
 - V2.3 训练完成（NEFTune α=5, 3ep, lr=1.5e-4）
