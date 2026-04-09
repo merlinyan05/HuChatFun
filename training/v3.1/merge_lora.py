@@ -1,10 +1,7 @@
 """
 合并 LoRA adapter 到基座模型，输出完整 fp16 权重
 用法: python training/v3.1/merge_lora.py
-输出: models/huchat-merged-v5/ (约 16GB safetensors)
-
-注意：不要用 Unsloth 的 save_pretrained_merged，它从 4-bit 反量化合并会丢精度。
-用原生 transformers 加载 fp16 基座再合并，和 V2.3 一样。
+输出: models/huchat-merged-v7/ (约 16GB safetensors)
 """
 
 import torch
@@ -14,8 +11,8 @@ from peft import PeftModel
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 BASE_MODEL = str(ROOT / "models" / "Qwen3-8B")
-LORA_ADAPTER = str(ROOT / "models" / "huchat-lora-v5")
-OUTPUT_DIR = str(ROOT / "models" / "huchat-merged-v5")
+LORA_ADAPTER = str(ROOT / "models" / "huchat-lora-v7")
+OUTPUT_DIR = str(ROOT / "models" / "huchat-merged-v7")
 
 
 def main():
@@ -23,10 +20,8 @@ def main():
     print(f"LoRA adapter: {LORA_ADAPTER}")
     print(f"输出目录: {OUTPUT_DIR}")
 
-    # ── 加载 tokenizer（从基座模型，不从 LoRA adapter） ──
-    # Unsloth 训练时会修改 tokenizer 配置（清空 extra_special_tokens 等），
-    # 导致 <|im_start|>/<|im_end|> 丢失，GGUF 转换后 Ollama 无法正确解析 ChatML。
-    print("加载 tokenizer（从基座模型）...")
+    # ── 加载 tokenizer（从基座模型） ──
+    print("加载 tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
 
     # ── 加载基座模型（fp16，CPU）──

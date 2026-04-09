@@ -81,8 +81,12 @@ tools/             第三方工具（llama.cpp 等，不入库）
 - [X] V2 系列封版（2026-04-07，git tag `v2.3-final`）
 - [X] 瓶颈分析：V2.2→V2.3 指标持平，SFT+LoRA+V2 数据已到天花板
 - [X] V3.1 Unsloth 实验（2026-04-07，**失败**：trl 降级导致 loss masking 丢失 + tokenizer 被改 → 推理严重退化）
-- [ ] **V2.4 训练：r=128**（脚本就绪，待跑）← **当前在这里**
-- [ ] V2.4 部署测试 → Ollama `huchatfunV8`
+- [X] V2.4 训练完成（2026-04-08，loss 2.17, acc 0.64，不如 V6，确认 r=128 不是瓶颈）
+- [X] V2.4 部署测试（2026-04-08，重复比 V6 更严重，放弃）
+- [X] V3 数据管线就绪（2026-04-08，pipeline/v3，加入 2023 年语料）
+- [ ] **V3 数据处理**（运行 pipeline/v3/step1-step6）← **当前在这里**
+- [ ] V3.1 训练（V3 数据，r=64，参数同 V2.3）
+- [ ] V3.1 部署测试 → Ollama `huchatfunV9`
 - [ ] 最终部署到 Ollama
 
 ## 关键设计决策（已确定）
@@ -147,7 +151,8 @@ tools/             第三方工具（llama.cpp 等，不入库）
 | V2.2-deploy-b | V5 | — | — | — | — | V2.2 权重 + 最佳调参 | `huchatfunV5` (f16) |
 | V2.3 | V6 | V2（同上） | r=64 α=128 | 3 | 1024 | **当前最佳**，NEFTune α=5, lr=1.5e-4, loss 2.10 | `huchatfunV6` (f16) |
 | V3.1 | V7 | V2（同上） | r=64 α=128 | 3 | 1024 | **失败**，Unsloth 框架，推理严重退化 | `huchatfunV7` (废弃) |
-| V2.4 | V8 | V2（同上） | **r=128 α=256** | 3 | 1024 | 待训练 | `huchatfunV8` (待部署) |
+| V2.4 | V8 | V2（同上） | **r=128 α=256** | 3 | 1024 | loss 2.17, acc 0.64, **不如 V6，重复更严重** | `huchatfunV8` (f16) |
+| V3.1 | V9 | **V3: ~4500条, 2023+2024+2025**, ≤8轮/条 | r=64 α=128 | 3 | 1024 | 待训练 | `huchatfunV9` (待部署) |
 
 所有版本基座均为 Qwen3-8B，QLoRA 4-bit NF4，target_modules=q/k/v/o_proj。
 各版本详细参数见 `training/v*.*/README.md` 和 `deploy/v*.*/README.md`。
@@ -163,25 +168,35 @@ tools/             第三方工具（llama.cpp 等，不入库）
 - **Windows 上不要用 Unsloth**，兼容性问题太多（详见 troubleshooting.md）
 - 合并 LoRA 时 tokenizer 必须从基座模型加载，不能从 LoRA adapter 加载（Unsloth/trl 可能修改 tokenizer 配置）
 
+### 关键结论
+- **LoRA 容量不是瓶颈**：V2.4 (r=128) 和 V2.3 (r=64) 效果持平甚至更差
+- **瓶颈在数据量和训练方法**：V2 的 2667 条数据 + SFT 已到天花板
+
 ### 下一步方向
 1. ~~Unsloth 框架替换~~（已试，Windows 上失败，放弃）
-2. **V2.4: r=128**（脚本就绪，用原框架 transformers+peft+trl 1.0.0）
-3. 换基座模型（Qwen4/DeepSeek 等，等 V2.4 结果再决定）
-4. DPO 二阶段（专门惩罚重复，等 SFT 基础够好再做）
+2. ~~V2.4: r=128~~（已跑，确认无提升，放弃）
+3. **V3.1: 扩充数据**（加入 2023 年语料，数据量翻倍）← 当前
+4. 换基座模型（Qwen4/DeepSeek 等，等 V3.1 结果再决定）
+5. DPO 二阶段（专门惩罚重复，等 SFT 基础够好再做）
+6. 合成数据增强（用大模型仿写户晨风风格对话，扩充训练集）
 
 ## 上次会话摘要
 
 <!-- 每次结束时让 Claude Code 更新，不等用户提醒 -->
 
-最近一次会话（2026-04-07）：
+最近一次会话（2026-04-08）：
+- V2.4 训练完成：loss 2.17, acc 0.64（与 V2.3 持平，重复更严重）
+- V2.4 部署测试：确认 r=128 不是瓶颈，效果不如 V6
+- **确认瓶颈在数据量，不在 LoRA 容量**
+- V3 数据管线创建（pipeline/v3，加入 2023 年 168 个文件）
+- V3.1 训练/部署脚本就绪（training/v3.1, deploy/v3.1）
+- 覆盖了之前 Unsloth 版的 training/v3.1 文件
+
+上一次会话（2026-04-07）：
 - 瓶颈分析：V2 系列 loss/accuracy 已到天花板
 - 打 git tag `v2.3-final` 封版
-- **Unsloth 实验（V3.1/V7）完整流程：安装→训练→导出→部署→全部失败**
-  - 训练 loss 正常（2.04）但推理严重退化（无限重复）
-  - 根因：trl 0.24 丢失 loss masking + tokenizer extra_special_tokens 被清空
-  - 详见 troubleshooting.md 共 4 条新记录
-- 放弃 Unsloth，回到原框架（transformers+peft+trl 1.0.0）
-- 准备 V2.4（r=128）训练脚本，待明天跑
+- Unsloth 实验（V3.1/V7）完整失败，放弃
+- 准备 V2.4（r=128）训练脚本
 - 环境已恢复（trl 1.0.0）
 
 上一次会话（2026-04-03）：

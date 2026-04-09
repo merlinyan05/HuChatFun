@@ -1,18 +1,15 @@
 """
-HuChatFun V3.1 训练脚本（Unsloth 版）
+HuChatFun V3.1 QLoRA 训练脚本
 在 RTX 5080 16GB 上微调 Qwen3-8B
-变更：Unsloth 替换原生 transformers+peft，其余参数与 V2.3 保持一致作为基线
-用法: PYTHONIOENCODING=utf-8 python training/v3.1/train.py
+变更：V3 数据（2023+2024+2025），训练参数同 V2.3
+用法: python training/v3.1/train.py
 """
 
-import sys
-if sys.platform == "win32":  # Unsloth 输出含 emoji，Windows GBK 编码会崩
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
-
 import json
+import torch
 from pathlib import Path
-from unsloth import FastLanguageModel
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from trl import SFTTrainer, SFTConfig
 from datasets import Dataset
 
@@ -20,18 +17,18 @@ from datasets import Dataset
 ROOT = Path(__file__).resolve().parent.parent.parent
 
 MODEL_PATH = str(ROOT / "models" / "Qwen3-8B")
-TRAIN_DATA = str(ROOT / "data" / "v2" / "final" / "train.json")
-EVAL_DATA = str(ROOT / "data" / "v2" / "final" / "eval.json")
-OUTPUT_DIR = str(ROOT / "models" / "huchat-lora-v5")
-LOG_DIR = str(ROOT / "logs" / "run5")
+TRAIN_DATA = str(ROOT / "data" / "v3" / "final" / "train.json")
+EVAL_DATA = str(ROOT / "data" / "v3" / "final" / "eval.json")
+OUTPUT_DIR = str(ROOT / "models" / "huchat-lora-v7")
+LOG_DIR = str(ROOT / "logs" / "run7")
 
-# LoRA 参数
+# LoRA 参数（同 V2.3）
 LORA_R = 64
 LORA_ALPHA = 128
 LORA_DROPOUT = 0.05
 TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj"]
 
-# 训练超参（与 V2.3 一致，作为 Unsloth 基线对比）
+# 训练超参（同 V2.3）
 MAX_SEQ_LEN = 1024
 BATCH_SIZE = 1
 GRAD_ACCUM = 16            # 有效 batch = 16
@@ -54,42 +51,48 @@ def main():
     print(f"训练数据: {TRAIN_DATA}")
     print(f"输出目录: {OUTPUT_DIR}")
 
-    # ── Unsloth 加载模型（自带 4-bit 量化） ──
-    print("加载模型（Unsloth 4-bit）...")
-    model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name=MODEL_PATH,
-        max_seq_length=MAX_SEQ_LEN,
+    # ── 4-bit NF4 量化配置 ──
+    bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
-        dtype=None,  # 自动检测，RTX 5080 会用 bfloat16
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_use_double_quant=True,
     )
 
+    # ── 加载 Tokenizer ──
+    tokenizer = AutoTokenizer.from_pretrained(
+        MODEL_PATH, trust_remote_code=True, padding_side="right"
+    )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.model_max_length = MAX_SEQ_LEN
 
-    # ── Unsloth LoRA 配置 ──
-    model = FastLanguageModel.get_peft_model(
-        model,
+    # ── 加载模型（4-bit 量化） ──
+    print("加载模型（4-bit 量化）...")
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_PATH,
+        quantization_config=bnb_config,
+        device_map="auto",
+        trust_remote_code=True,
+        dtype=torch.bfloat16,
+    )
+    model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
+
+    # ── LoRA 配置 ──
+    lora_config = LoraConfig(
         r=LORA_R,
         lora_alpha=LORA_ALPHA,
-        lora_dropout=LORA_DROPOUT,
         target_modules=TARGET_MODULES,
+        lora_dropout=LORA_DROPOUT,
         bias="none",
-        use_gradient_checkpointing="unsloth",  # Unsloth 优化版，比原生省 30% 显存
+        task_type="CAUSAL_LM",
     )
+    model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
 
-    # ── 加载数据集并转为文本 ──
-    def messages_to_text(item):
-        """将 messages 格式手动拼成 ChatML 文本"""
-        parts = []
-        for msg in item["messages"]:
-            parts.append(f"<|im_start|>{msg['role']}\n{msg['content']}<|im_end|>")
-        return {"text": "\n".join(parts)}
-
-    train_raw = load_json(TRAIN_DATA)
-    eval_raw = load_json(EVAL_DATA)
-    train_ds = Dataset.from_list(train_raw).map(messages_to_text)
-    eval_ds = Dataset.from_list(eval_raw).map(messages_to_text)
+    # ── 加载数据集 ──
+    train_ds = Dataset.from_list(load_json(TRAIN_DATA))
+    eval_ds = Dataset.from_list(load_json(EVAL_DATA))
     print(f"训练集: {len(train_ds)} 条 | 验证集: {len(eval_ds)} 条")
 
     # ── 训练配置 ──
@@ -111,7 +114,7 @@ def main():
         packing=False,
         report_to="none",
         save_total_limit=3,
-        optim="adamw_8bit",  # Unsloth 推荐用 adamw_8bit
+        optim="paged_adamw_8bit",
         max_length=MAX_SEQ_LEN,
         seed=42,
         neftune_noise_alpha=NEFTUNE_ALPHA,
@@ -127,14 +130,14 @@ def main():
     )
 
     print("=" * 50)
-    print("开始训练！V3.1 (Unsloth)")
+    print("开始训练！V3.1")
     print(f"  有效 batch size: {BATCH_SIZE * GRAD_ACCUM}")
     print(f"  总 epoch: {EPOCHS}")
     print(f"  最大序列长度: {MAX_SEQ_LEN}")
     print(f"  LoRA rank: {LORA_R}")
+    print(f"  LoRA alpha: {LORA_ALPHA}")
     print(f"  学习率: {LR}")
     print(f"  NEFTune alpha: {NEFTUNE_ALPHA}")
-    print(f"  优化器: adamw_8bit (Unsloth)")
     print("=" * 50)
 
     trainer.train()
